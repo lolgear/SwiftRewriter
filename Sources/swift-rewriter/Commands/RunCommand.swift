@@ -32,7 +32,7 @@ public struct RunCommand: CommandProtocol
     
     private func _processOutputToFile(_ source: File, options: Options) throws {
         guard source.extension == "swift" else { return }
-        guard let outputPath = options.outputPath, let output = try? File(path: outputPath, using: .default) else { return }
+        guard let outputPath = options.outputPath, let output = try? File(path: outputPath, using: .default) else { throw NSError(domain: "com.arguments", code: -100, userInfo: [NSLocalizedDescriptionKey: "File not exists or path is nil! \(options)"]) }
         let t1 = DispatchTime.now()
 
         let sourceFile: SourceFileSyntax =
