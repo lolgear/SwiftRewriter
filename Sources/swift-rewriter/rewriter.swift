@@ -2,6 +2,10 @@ import SwiftRewriter
 
 /// Global rewriter.
 var rewriter: Rewriter {
+    return MemberwiseConvenientInitializer() >>> SyntaxRewriter.Empty()
+}
+
+var rewriter2: Rewriter {
     return
         // Comment
         HeaderCopyrightTrimmer()
