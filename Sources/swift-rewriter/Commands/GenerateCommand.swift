@@ -89,7 +89,9 @@ public struct GenerateCommand: CommandProtocol
             print()
         }
         else {
-            try target.write(string: result.description)
+            let optionalHeader = [options.commentsHeaderFilePath, options.importsFilePath].compactMap{try? File(path: $0).readAsString()}.joined(separator: "\n\n")
+            let output = [optionalHeader, result.description].joined(separator: "\n")
+            try target.write(string: output)
         }
     }
 }
@@ -102,15 +104,32 @@ public extension GenerateCommand {
         fileprivate let transform: String
         fileprivate let list: Bool
         fileprivate let templateFilePath: String
+        fileprivate let commentsHeaderFilePath: String
+        fileprivate let importsFilePath: String
+        
+        public static func create() -> (String) -> (Bool) -> (String) -> (String) -> (Bool) -> (String) -> (String) -> (String) -> Self {
+            return  { a in
+                    { b in
+                    { c in
+                    { d in
+                    { e in
+                    { f in
+                    { g in
+                    { h in
+                        Options.init(filePath: a, debug: b, outputFilePath: c, transform: d, list: e, templateFilePath: f, commentsHeaderFilePath: g, importsFilePath: h)
+                }}}}}}}}
+        }
         
         public static func evaluate(_ m: CommandMode) -> Result<Self, CommandantError<Swift.Error>> {
-            return curry(Self.init)
+            return Self.create()
                 <*> m <| Option(key: "filePath", defaultValue: "", usage: "The path to the file in 'generate' action.")
                 <*> m <| Switch(flag: "d", key: "debug", usage: "DEBUG")
                 <*> m <| Option(key: "outputFilePath", defaultValue: "", usage: "Use with flag --filePath. It will output to this file")
                 <*> m <| Option(key: "transform", defaultValue: "", usage: "Transform with name or shortcut.")
                 <*> m <| Switch(flag: "l", key: "list", usage: "List available transforms")
                 <*> m <| Option(key: "templateFilePath", defaultValue: "", usage: "Template file that should be used in some transforms")
+                <*> m <| Option(key: "commentsHeaderFilePath", defaultValue: "", usage: "Comments header file that will be included at top")
+                <*> m <| Option(key: "importsFilePath", defaultValue: "", usage: "Import file that will be included at top after comments if presented")
         }
     }
 }
