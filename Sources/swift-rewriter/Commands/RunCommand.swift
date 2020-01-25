@@ -119,7 +119,7 @@ public struct RunOptions: OptionsProtocol
     public static func evaluate(_ m: CommandMode) -> Result<RunOptions, CommandantError<Swift.Error>>
     {
         return curry(Self.init)
-            <*> m <| pathOption(action: "run")
+            <*> m <| Option(key: "path", defaultValue: "", usage: "Used")//pathOption(action: "run")
             <*> m <| Switch(flag: "d", key: "debug", usage: "DEBUG")
             <*> m <| Switch(flag: "i", key: "idempotent", usage: "Use with flag --outputPath. It will output only diff after rewriting to outputPath file.")
             <*> m <| Option(key: "outputPath", defaultValue: nil, usage: "Use with flag --path. It will output to this file")

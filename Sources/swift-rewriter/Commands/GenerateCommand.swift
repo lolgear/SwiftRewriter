@@ -1,0 +1,153 @@
+//
+//  GenerateCommand.swift
+//  
+//
+//  Created by Dmitry Lobanov on 25.01.2020.
+//
+
+import Foundation
+import Curry
+import Commandant
+import Files
+import SwiftSyntax
+import SwiftRewriter
+
+public struct GenerateCommand: CommandProtocol
+{
+    
+    enum Error: Swift.Error {
+        static let swiftExtension = "swift"
+        case inputFileNotExists(String)
+        case outputFileNotExists(String)
+        case filesAreEqual(String, String)
+        case filesAreCorrupted
+        case fileShouldHaveSwiftExtension(String)
+        case transformDoesntExist(String)
+    }
+
+    public let verb = "generate"
+    public let function = "Apply source transform and output it to different file."
+
+    func run(_ options: Options) throws {
+        
+        if options.list {
+            for i in Transform.list().map({"flag: \($0.1) -> name: \($0.0) \n \t\t\t \($0.2)\n"}) {
+                print(i)
+            }
+            return
+        }
+        
+        guard FileManager.default.fileExists(atPath: options.filePath) else {
+            throw Error.inputFileNotExists(options.filePath)
+        }
+        
+        guard FileManager.default.fileExists(atPath: options.outputFilePath) else {
+            throw Error.outputFileNotExists(options.outputFilePath)
+        }
+        
+        guard options.filePath != options.outputFilePath else {
+            throw Error.filesAreEqual(options.filePath, options.outputFilePath)
+        }
+        
+        if let source = try? File(path: options.filePath), let target = try? File(path: options.outputFilePath) {
+            try self.processTransform(source: source, target: target, options: options)
+        }
+        
+    }
+    
+    private func processTransform(source: File, target: File, options: Options) throws {
+        guard source.extension == Error.swiftExtension else {
+            throw Error.fileShouldHaveSwiftExtension(source.path)
+        }
+        
+        guard target.extension == Error.swiftExtension else {
+            throw Error.fileShouldHaveSwiftExtension(target.path)
+        }
+        
+        guard let transform = Transform.create(options.transform) else {
+            throw Error.transformDoesntExist(options.transform)
+        }
+        
+        let t1 = DispatchTime.now()
+        
+        let sourceFile = try Rewriter.parse(sourceFileURL: URL(fileURLWithPath: source.path))
+        
+        let t2 = DispatchTime.now()
+        
+        let result = transform.transform(options: options)(sourceFile)
+
+        let t3 = DispatchTime.now()
+        
+        print("Processing source file -> \(source.path) ")
+
+        if options.debug {
+            print("=============== time ===============")
+            print("total time:", t3 - t1)
+            print("  SyntaxParser.parse time:  ", t2 - t1)
+            print("  rewriter.rewrite time:", t3 - t2)
+            print("=============== result ===============")
+            print()
+        }
+        else {
+            try target.write(string: result.description)
+        }
+    }
+}
+
+public extension GenerateCommand {
+    struct Options: OptionsProtocol {
+        fileprivate let filePath: String
+        fileprivate let debug: Bool
+        fileprivate let outputFilePath: String
+        fileprivate let transform: String
+        fileprivate let list: Bool
+        fileprivate let templateFilePath: String
+        
+        public static func evaluate(_ m: CommandMode) -> Result<Self, CommandantError<Swift.Error>> {
+            return curry(Self.init)
+                <*> m <| Option(key: "filePath", defaultValue: "", usage: "The path to the file in 'generate' action.")
+                <*> m <| Switch(flag: "d", key: "debug", usage: "DEBUG")
+                <*> m <| Option(key: "outputFilePath", defaultValue: "", usage: "Use with flag --filePath. It will output to this file")
+                <*> m <| Option(key: "transform", defaultValue: "", usage: "Transform with name or shortcut.")
+                <*> m <| Switch(flag: "l", key: "list", usage: "List available transforms")
+                <*> m <| Option(key: "templateFilePath", defaultValue: "", usage: "Template file that should be used in some transforms")
+        }
+    }
+}
+
+public extension GenerateCommand {
+    enum Transform: String, CaseIterable {
+        case errorAdoption, requestAndResponse
+        func transform(options: Options) -> (SourceFileSyntax) -> Syntax {
+            switch self {
+            case .errorAdoption: return ErrorProtocolAdoptionGenerator().generate
+            case .requestAndResponse: return RequestResponseExtensionGenerator().with(templatePaths: [options.templateFilePath]).generate
+            }
+        }
+        func shortcut() -> String {
+            switch self {
+            case .errorAdoption: return "e"
+            case .requestAndResponse: return "rr"
+            }
+        }
+        func humanDescription() -> String {
+            switch self {
+            case .errorAdoption: return "Adopt error protocol to .Error types."
+            case .requestAndResponse: return "Add Invocation and Service to Scope IF Scope.Request and Scope.Response types exist."
+            }
+        }
+        static func create(_ shortcutOrName: String) -> Self? {
+            return Self.init(rawValue: shortcutOrName) ?? .create(shortcut: shortcutOrName)
+        }
+        static func create(shortcut: String) -> Self? {
+            switch shortcut {
+            case Self.errorAdoption.shortcut(): return .errorAdoption
+            case Self.requestAndResponse.shortcut(): return .requestAndResponse
+            default: return nil
+            }
+        }
+        static func list() -> [(String, String, String)] {
+            allCases.compactMap {($0.rawValue, $0.shortcut() ,$0.humanDescription())}
+        }
+    }
+}
