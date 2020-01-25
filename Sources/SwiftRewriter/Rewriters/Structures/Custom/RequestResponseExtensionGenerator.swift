@@ -110,7 +110,6 @@ extension RequestResponseExtensionGenerator: Generator {
     func generate(part: Part, options: Options) -> Syntax {
         switch part {
         case let .service(value):
-            let publicKeyword = SyntaxFactory.makePublicKeyword()
             let serviceName = value.serviceName
             let serviceNameIdentifier = SyntaxFactory.makeIdentifier(serviceName)
             // our result is enum
@@ -120,10 +119,8 @@ extension RequestResponseExtensionGenerator: Generator {
                                                 
             let memberDeclListSyntax = SyntaxFactory.makeMemberDeclList(memberDeclList)
             let memberDeclBlockSyntax = SyntaxFactory.makeMemberDeclBlock(leftBrace: SyntaxFactory.makeLeftBraceToken().withLeadingTrivia(.spaces(1)).withTrailingTrivia(.newlines(1)), members: memberDeclListSyntax, rightBrace: SyntaxFactory.makeRightBraceToken().withLeadingTrivia(.newlines(1)).withTrailingTrivia(.newlines(1)))
-            let attributesListSyntax = SyntaxFactory.makeAttributeList([
-                publicKeyword.withLeadingTrivia(.newlines(1)).withTrailingTrivia(.spaces(1))
-            ])
-            let result = SyntaxFactory.makeEnumDecl(attributes: attributesListSyntax, modifiers: nil, enumKeyword: SyntaxFactory.makeEnumKeyword().withTrailingTrivia(.spaces(1)), identifier: serviceNameIdentifier, genericParameters: nil, inheritanceClause: nil, genericWhereClause: nil, members: memberDeclBlockSyntax)
+            
+            let result = SyntaxFactory.makeEnumDecl(attributes: nil, modifiers: nil, enumKeyword: SyntaxFactory.makeEnumKeyword().withLeadingTrivia(.newlines(1)).withTrailingTrivia(.spaces(1)), identifier: serviceNameIdentifier, genericParameters: nil, inheritanceClause: nil, genericWhereClause: nil, members: memberDeclBlockSyntax)
             return result
             
         case let .scope(value):
@@ -145,7 +142,9 @@ extension RequestResponseExtensionGenerator: Generator {
             let memberDeclBlockSyntax = SyntaxFactory.makeMemberDeclBlock(leftBrace: SyntaxFactory.makeLeftBraceToken().withLeadingTrivia(.spaces(1)).withTrailingTrivia(.newlines(1)), members: memberDeclListSyntax, rightBrace: SyntaxFactory.makeRightBraceToken().withTrailingTrivia(.newlines(1)))
             
             let attributesListSyntax = SyntaxFactory.makeAttributeList([
-                SyntaxFactory.makePublicKeyword().withLeadingTrivia(.newlines(1)).withTrailingTrivia(.spaces(1))
+                // TODO: Make it public when extended type will have access level public.
+                SyntaxFactory.makeInternalKeyword()//.makePublicKeyword()
+                    .withLeadingTrivia(.newlines(1)).withTrailingTrivia(.spaces(1))
             ])
             
             let result = SyntaxFactory.makeExtensionDecl(attributes: attributesListSyntax, modifiers: nil, extensionKeyword: SyntaxFactory.makeExtensionKeyword().withTrailingTrivia(.spaces(1)), extendedType: scopeTypeSyntax, inheritanceClause: nil, genericWhereClause: nil, members: memberDeclBlockSyntax)
