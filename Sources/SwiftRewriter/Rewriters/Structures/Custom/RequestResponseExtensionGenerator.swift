@@ -115,7 +115,7 @@ extension RequestResponseExtensionGenerator: Generator {
             // our result is enum
             
             // fill enum
-            let memberDeclList: [MemberDeclListItemSyntax] = [self.generate(servicePart: .publicInvocation(value.scope), options: options), self.generate(servicePart: .template, options: options)].flatMap{$0}.compactMap{entry in MemberDeclListItemSyntax.init{b in b.useDecl(entry)}}
+            let memberDeclList: [MemberDeclListItemSyntax] = [self.generate(servicePart: .publicInvocation(value.scope), options: options), self.generate(servicePart: .template, options: options)].flatMap{$0}.compactMap(MemberDeclListItemSyntax.init({_ in}).withDecl)
                                                 
             let memberDeclListSyntax = SyntaxFactory.makeMemberDeclList(memberDeclList)
             let memberDeclBlockSyntax = SyntaxFactory.makeMemberDeclBlock(leftBrace: SyntaxFactory.makeLeftBraceToken().withLeadingTrivia(.spaces(1)).withTrailingTrivia(.newlines(1)), members: memberDeclListSyntax, rightBrace: SyntaxFactory.makeRightBraceToken().withLeadingTrivia(.newlines(1)).withTrailingTrivia(.newlines(1)))
@@ -137,7 +137,7 @@ extension RequestResponseExtensionGenerator: Generator {
             let serviceSyntax = self.generate(part: .service(value), options: self.options)
             
             // build members
-            let memberDeclList: [MemberDeclListItemSyntax] = [invocationSyntax, serviceSyntax].compactMap{$0 as? DeclSyntax}.compactMap{entry in MemberDeclListItemSyntax.init{b in b.useDecl(entry)}}
+            let memberDeclList: [MemberDeclListItemSyntax] = [invocationSyntax, serviceSyntax].compactMap{$0 as? DeclSyntax}.compactMap(MemberDeclListItemSyntax.init({_ in}).withDecl)
             let memberDeclListSyntax = SyntaxFactory.makeMemberDeclList(memberDeclList)
             let memberDeclBlockSyntax = SyntaxFactory.makeMemberDeclBlock(leftBrace: SyntaxFactory.makeLeftBraceToken().withLeadingTrivia(.spaces(1)).withTrailingTrivia(.newlines(1)), members: memberDeclListSyntax, rightBrace: SyntaxFactory.makeRightBraceToken().withTrailingTrivia(.newlines(1)))
             
@@ -156,8 +156,7 @@ extension RequestResponseExtensionGenerator: Generator {
         self.generate(part: .scope(.init(serviceName: self.options.serviceName, scope: scope)), options: self.options)
     }
     public func generate(_ node: SourceFileSyntax) -> Syntax {
-        let syntaxList = self.scan(node).compactMap(self.generate)
-        let codeBlockItemListSyntax = syntaxList.compactMap {entry in CodeBlockItemSyntax.init{b in b.useItem(entry)}}
+        let codeBlockItemListSyntax = self.scan(node).compactMap(self.generate).compactMap(CodeBlockItemSyntax.init{_ in}.withItem)        
         let result = SyntaxFactory.makeSourceFile(statements: SyntaxFactory.makeCodeBlockItemList(codeBlockItemListSyntax), eofToken: SyntaxFactory.makeToken(.eof, presence: .present))
         return result
     }

@@ -66,9 +66,7 @@ extension ErrorProtocolAdoptionGenerator: Generator {
         let items = node.statements.compactMap{$0.item as? DeclSyntax}.compactMap(self.search).flatMap{$0}
         let declarations = items.map(self.generate)
         
-        let statements = declarations.compactMap { entry in
-            CodeBlockItemSyntax.init{ b in b.useItem(entry) }
-        }
+        let statements = declarations.compactMap(CodeBlockItemSyntax.init{_ in}.withItem)
         
         return SyntaxFactory.makeSourceFile(statements: SyntaxFactory.makeCodeBlockItemList(statements), eofToken: SyntaxFactory.makeToken(.eof, presence: .present))        
     }
