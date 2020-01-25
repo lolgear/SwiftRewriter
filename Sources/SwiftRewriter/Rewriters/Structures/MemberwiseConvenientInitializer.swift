@@ -22,13 +22,12 @@ open class MemberwiseConvenientInitializer: SyntaxRewriter {
     public var options: Options = .init()
     open override func visit(_ syntax: SourceFileSyntax) -> Syntax {
         let fieldsExtractor = NecessaryFieldsExtractor()
-        fieldsExtractor.options = self.options
         _ = fieldsExtractor.visit(syntax) as! SourceFileSyntax
         // we don't care about changing, we only need parsing variables.
         
         var items: [CodeBlockItemSyntax] = []
         
-        for (_, fields) in fieldsExtractor.extractedFields.sorted(by: { (lhs, rhs) -> Bool in
+        for (_, fields) in fieldsExtractor.storedPropertiesExtractor.extractedFields.sorted(by: { (lhs, rhs) -> Bool in
             lhs.key < rhs.key
         }) {
             let (structure, storedVariables) = fields
@@ -157,83 +156,11 @@ public extension MemberwiseConvenientInitializer {
 // 2. Fields has get and setter.
 private extension MemberwiseConvenientInitializer {
     class NecessaryFieldsExtractor: SyntaxRewriter {
-        class CheckVariableFilter: SyntaxRewriter {
-            struct Variable {
-                static let zero = Variable()
-                func isEmpty() -> Bool {
-                    return nameSyntax == nil
-                }
-                enum Accessor: CustomStringConvertible {
-                    case none
-                    case getter
-                    case setter
-                    func computed() -> Bool {
-                        self == .getter
-                    }
-                    var description: String {
-                        switch self {
-                        case .none: return "none"
-                        case .getter: return "getter"
-                        case .setter: return "setter"
-                        }
-                    }
-                }
-                var name: String? { nameSyntax?.description }
-                var nameSyntax: PatternSyntax?
-                var typeAnnotation: String? { typeAnnotationSyntax?.description }
-                var typeAnnotationSyntax: TypeAnnotationSyntax?
-                var accessor: Accessor = .none
-                func computed() -> Bool { accessor.computed() }
-                func unknownType() -> Bool { typeAnnotationSyntax == nil }
-            }
-            private func modifier(modifier: AccessorBlockSyntax?) -> Variable.Accessor {
-                guard let modifier = modifier else { return .none }
-                let emptySetters = modifier.accessors.enumerated().map {$0.element.accessorKind.tokenKind}.filter { .contextualKeyword("set") == $0 }.isEmpty
-                return emptySetters ? .getter : .setter
-            }
-            private func accessor(accessor: Syntax?) -> Variable.Accessor {
-                guard let accessor = accessor else { return .none }
-                switch accessor {
-                case is CodeBlockSyntax: return .getter
-                case is AccessorBlockSyntax: return self.modifier(modifier: accessor as? AccessorBlockSyntax)
-                default: return .none
-                }
-            }
-            func variable(variable: VariableDeclSyntax) -> Variable {
-                for binding in variable.bindings {
-                    var variable = Variable(nameSyntax: binding.pattern, typeAnnotationSyntax: binding.typeAnnotation)
-                    variable.accessor = self.accessor(accessor: binding.accessor)
-                    return variable
-                }
-                return .zero
-            }
-        }
-        // MARK: Variables
-        var options: Options = .init()
-        // StructName -> (Struct, [MemberItem])
-        var extractedFields: [String: (TypeSyntax, [CheckVariableFilter.Variable])] = [:]
-        
-        var filter = CheckVariableFilter()
+        var storedPropertiesExtractor = StoredPropertiesExtractor()
         
         // MARK: Visits
         open override func visit(_ syntax: StructDeclSyntax) -> DeclSyntax {
-            let structFullIdentifier = syntax.fullIdentifier
-
-            var storedVariablesList: [CheckVariableFilter.Variable] = []
-
-            // Get MemberItem from struct with conditions.
-            for (_, item) in syntax.members.members.enumerated() {
-                if let decl = item.decl as? VariableDeclSyntax {
-                    let variable = self.filter.variable(variable: decl)
-                    if variable.isEmpty() || variable.computed() || variable.unknownType() {
-                        continue
-                    }
-                    storedVariablesList.append(variable)
-                }
-            }
-
-            self.extractedFields[structFullIdentifier.description] = (structFullIdentifier, storedVariablesList)
-
+            _ = self.storedPropertiesExtractor.visit(syntax)
             return super.visit(syntax)
         }
     }

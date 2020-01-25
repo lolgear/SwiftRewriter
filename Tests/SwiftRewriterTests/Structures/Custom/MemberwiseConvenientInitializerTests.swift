@@ -28,6 +28,7 @@
 //}
 import XCTest
 @testable import SwiftRewriter
+
 final class MemberwiseConvenientInitializerTests: XCTestCase
 {
     func test_empty() throws
