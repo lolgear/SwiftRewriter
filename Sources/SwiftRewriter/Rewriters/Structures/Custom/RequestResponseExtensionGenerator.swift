@@ -99,13 +99,8 @@ extension RequestResponseExtensionGenerator: Generator {
             let properties = (scope.request.syntax as? StructDeclSyntax).flatMap(self.storedPropertiesExtractor.extract)
             let variables = properties?[structIdentifier]?.1
             let result = variables.flatMap{self.publicInvocationGenerator.with(variables: $0)}.map{$0.generate(.function)}
-            return [result].flatMap{$0 as? DeclSyntax}
+            return [result].compactMap{$0 as? DeclSyntax}
         case .template:
-            options.templatePaths.first
-                .flatMap(self.templateGenerator.generate)
-                .flatMap{$0 as? SourceFileSyntax}
-                .flatMap{$0.statements}
-                .flatMap{$0 as? DeclSyntax}
             if let result = options.templatePaths.first.flatMap(self.templateGenerator.generate) as? SourceFileSyntax {
                 return result.statements.compactMap{$0.item as? DeclSyntax}
             }
@@ -126,9 +121,9 @@ extension RequestResponseExtensionGenerator: Generator {
             let memberDeclListSyntax = SyntaxFactory.makeMemberDeclList(memberDeclList)
             let memberDeclBlockSyntax = SyntaxFactory.makeMemberDeclBlock(leftBrace: SyntaxFactory.makeLeftBraceToken().withLeadingTrivia(.spaces(1)).withTrailingTrivia(.newlines(1)), members: memberDeclListSyntax, rightBrace: SyntaxFactory.makeRightBraceToken().withLeadingTrivia(.newlines(1)).withTrailingTrivia(.newlines(1)))
             let attributesListSyntax = SyntaxFactory.makeAttributeList([
-                publicKeyword.withTrailingTrivia(.spaces(1))
+                publicKeyword.withLeadingTrivia(.newlines(1)).withTrailingTrivia(.spaces(1))
             ])
-            let result = SyntaxFactory.makeEnumDecl(attributes: attributesListSyntax, modifiers: nil, enumKeyword: SyntaxFactory.makeEnumKeyword().withLeadingTrivia(.newlines(1)).withTrailingTrivia(.spaces(1)), identifier: serviceNameIdentifier, genericParameters: nil, inheritanceClause: nil, genericWhereClause: nil, members: memberDeclBlockSyntax)
+            let result = SyntaxFactory.makeEnumDecl(attributes: attributesListSyntax, modifiers: nil, enumKeyword: SyntaxFactory.makeEnumKeyword().withTrailingTrivia(.spaces(1)), identifier: serviceNameIdentifier, genericParameters: nil, inheritanceClause: nil, genericWhereClause: nil, members: memberDeclBlockSyntax)
             return result
             
         case let .scope(value):
@@ -149,7 +144,11 @@ extension RequestResponseExtensionGenerator: Generator {
             let memberDeclListSyntax = SyntaxFactory.makeMemberDeclList(memberDeclList)
             let memberDeclBlockSyntax = SyntaxFactory.makeMemberDeclBlock(leftBrace: SyntaxFactory.makeLeftBraceToken().withLeadingTrivia(.spaces(1)).withTrailingTrivia(.newlines(1)), members: memberDeclListSyntax, rightBrace: SyntaxFactory.makeRightBraceToken().withTrailingTrivia(.newlines(1)))
             
-            let result = SyntaxFactory.makeExtensionDecl(attributes: nil, modifiers: nil, extensionKeyword: SyntaxFactory.makeExtensionKeyword().withLeadingTrivia(.newlines(1)).withTrailingTrivia(.spaces(1)), extendedType: scopeTypeSyntax, inheritanceClause: nil, genericWhereClause: nil, members: memberDeclBlockSyntax)
+            let attributesListSyntax = SyntaxFactory.makeAttributeList([
+                SyntaxFactory.makePublicKeyword().withLeadingTrivia(.newlines(1)).withTrailingTrivia(.spaces(1))
+            ])
+            
+            let result = SyntaxFactory.makeExtensionDecl(attributes: attributesListSyntax, modifiers: nil, extensionKeyword: SyntaxFactory.makeExtensionKeyword().withTrailingTrivia(.spaces(1)), extendedType: scopeTypeSyntax, inheritanceClause: nil, genericWhereClause: nil, members: memberDeclBlockSyntax)
             // and build extension
             return result
         }
@@ -164,29 +163,3 @@ extension RequestResponseExtensionGenerator: Generator {
         return result
     }
 }
-
-struct ABC {
-    static func example() {
-        let a = [CustomStringConvertible]().compactMap(To.as(String.self))
-        let b = a.flatMap(Cast<String>.as)
-    }
-}
-
-struct To<From> {
-    let value: From
-    init(_ value: From) {
-        self.value = value
-    }
-    
-    static func `as`<T>(_ to: T.Type) -> (From) -> Optional<T> { { $0 as? T} }
-    
-//    static func ≈<From, To>(_ lhs: From, _ rhs: To.Type) -> Optional<To> {
-//        lhs as? To
-//    }
-}
-
-struct Cast<T> {
-    static func `as`<F>(_ from: F) -> (F) -> Optional<T> { { $0 as? T } }
-}
-
-//infix operator ≈: MultiplicationPrecedence
