@@ -31,7 +31,7 @@ open class MemberwiseConvenientInitializerGenerator: SyntaxRewriter {
             lhs.key < rhs.key
         }) {
             let (structure, storedVariables) = fields
-            let variablesNamesAndTypes = storedVariables.map({($0.name, $0.typeAnnotationSyntax?.type)}).filter{$0.0 != nil && $0.1 != nil}
+            let variablesNamesAndTypes = storedVariables.map({($0.name, $0.typeAnnotationSyntax?.type)}).filter{$0.1 != nil}
             guard !variablesNamesAndTypes.isEmpty else { continue }
 
             let newItem = SyntaxFactory.makeCodeBlockItem(
@@ -55,7 +55,7 @@ open class MemberwiseConvenientInitializerGenerator: SyntaxRewriter {
                          */
                         
                         let functionParameters = variablesNamesAndTypes.compactMap { (name, type) -> FunctionParameterSyntax? in
-                            guard let name = name, let type = type else { return nil }
+                            guard let type = type else { return nil }
                             // TODO: Remove trailingTrivia somehow... type is immutable :(
                             let typeName = type.description.trimmingCharacters(in: .whitespacesAndNewlines)
                             return FunctionParameterSyntax { b in
@@ -178,7 +178,7 @@ extension MemberwiseConvenientInitializerGenerator: Generator {
             lhs.key < rhs.key
         }) {
             let (structure, storedVariables) = fields
-            let variablesNamesAndTypes = storedVariables.map({($0.name, $0.typeAnnotationSyntax?.type)}).filter{$0.0 != nil && $0.1 != nil}
+            let variablesNamesAndTypes = storedVariables.map({($0.name, $0.typeAnnotationSyntax?.type)}).filter{$0.1 != nil}
             guard !variablesNamesAndTypes.isEmpty else { continue }
 
             let newItem = SyntaxFactory.makeCodeBlockItem(
@@ -202,7 +202,7 @@ extension MemberwiseConvenientInitializerGenerator: Generator {
                          */
                         
                         let functionParameters = variablesNamesAndTypes.compactMap { (name, type) -> FunctionParameterSyntax? in
-                            guard let name = name, let type = type else { return nil }
+                            guard let type = type else { return nil }
                             // TODO: Remove trailingTrivia somehow... type is immutable :(
                             let typeName = type.description.trimmingCharacters(in: .whitespacesAndNewlines)
                             return FunctionParameterSyntax { b in

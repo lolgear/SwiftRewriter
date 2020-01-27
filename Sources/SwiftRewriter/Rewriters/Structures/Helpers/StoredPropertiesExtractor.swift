@@ -5,11 +5,13 @@
 //  Created by Dmitry Lobanov on 23.01.2020.
 //
 
+import Foundation
 import SwiftSyntax
 
 class StoredPropertiesExtractor: SyntaxRewriter {
     struct Options {
         var filterNames: [String] = []
+        var allowInconsistentSetter: Bool = false
     }
     class VariableFilter {
         struct Variable {
@@ -32,31 +34,51 @@ class StoredPropertiesExtractor: SyntaxRewriter {
                     }
                 }
             }
-            var name: String? { nameSyntax?.description }
+            var name: String { nameSyntax?.description ?? "" }
             var nameSyntax: PatternSyntax?
-            var typeAnnotation: String? { typeAnnotationSyntax?.description }
+            var typeAnnotation: String { typeAnnotationSyntax?.description ?? "" }
             var typeAnnotationSyntax: TypeAnnotationSyntax?
             var accessor: Accessor = .none
             func computed() -> Bool { accessor.computed() }
             func unknownType() -> Bool { typeAnnotationSyntax == nil }
+            
         }
-        private func modifier(modifier: AccessorBlockSyntax?) -> Variable.Accessor {
+        
+        private let setterVariableGroupName: String = "setterVariable"
+        private let setterVariablePattern: NSRegularExpression = (try? NSRegularExpression(pattern: "\\.(?<setterVariable>[^\\.=]+)\\s*=")) ?? NSRegularExpression()
+        
+        private func setters(setter: AccessorDeclSyntax?, variable: Variable) -> Variable.Accessor {
+            guard let body = setter?.body else { return .getter }
+        // check that
+            if #available(OSX 10.13, *) {
+                let variableName = variable.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                let bodyDescription = body.description
+                let ranges = self.setterVariablePattern.matches(in: bodyDescription, options: [], range: NSRange.init(location: 0, length: bodyDescription.count)).filter{$0.numberOfRanges > 0}.map {$0.range(withName: self.setterVariableGroupName)}
+                let containsVariableAtLeft = [ranges.first].compactMap{$0}.map{(bodyDescription as NSString).substring(with: $0).contains(variableName)}.allSatisfy({$0})
+                
+                return containsVariableAtLeft ? .setter : .getter
+            } else {
+                // Fallback on earlier versions
+            }
+            return .getter
+        }
+        private func modifier(modifier: AccessorBlockSyntax?, variable: Variable) -> Variable.Accessor {
             guard let modifier = modifier else { return .none }
-            let emptySetters = modifier.accessors.enumerated().map {$0.element.accessorKind.tokenKind}.filter { .contextualKeyword("set") == $0 }.isEmpty
-            return emptySetters ? .getter : .setter
+            let setters = modifier.accessors.enumerated().map {$0.element}.filter { .contextualKeyword("set") == $0.accessorKind.tokenKind }.first
+            return self.setters(setter: setters, variable: variable)
         }
-        private func accessor(accessor: Syntax?) -> Variable.Accessor {
+        private func accessor(accessor: Syntax?, variable: Variable) -> Variable.Accessor {
             guard let accessor = accessor else { return .none }
             switch accessor {
             case is CodeBlockSyntax: return .getter
-            case is AccessorBlockSyntax: return self.modifier(modifier: accessor as? AccessorBlockSyntax)
+            case let value as AccessorBlockSyntax: return self.modifier(modifier: value, variable: variable)
             default: return .none
             }
         }
         func variable(_ variable: VariableDeclSyntax) -> Variable {
             for binding in variable.bindings {
                 var variable = Variable(nameSyntax: binding.pattern, typeAnnotationSyntax: binding.typeAnnotation)
-                variable.accessor = self.accessor(accessor: binding.accessor)
+                variable.accessor = self.accessor(accessor: binding.accessor, variable: variable)
                 return variable
             }
             return .zero
