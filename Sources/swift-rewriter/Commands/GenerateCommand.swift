@@ -79,7 +79,7 @@ public struct GenerateCommand: CommandProtocol
         let t3 = DispatchTime.now()
         
         print("Processing source file -> \(source.path) ")
-
+        print("Output to file -> \(target.path)")
         if options.debug {
             print("=============== time ===============")
             print("total time:", t3 - t1)
@@ -121,7 +121,7 @@ public extension GenerateCommand {
         }
         
         public static func evaluate(_ m: CommandMode) -> Result<Self, CommandantError<Swift.Error>> {
-            return Self.create()
+            return Self.create()//curry(Self.init)
                 <*> m <| Option(key: "filePath", defaultValue: "", usage: "The path to the file in 'generate' action.")
                 <*> m <| Switch(flag: "d", key: "debug", usage: "DEBUG")
                 <*> m <| Option(key: "outputFilePath", defaultValue: "", usage: "Use with flag --filePath. It will output to this file")
@@ -136,34 +136,33 @@ public extension GenerateCommand {
 
 public extension GenerateCommand {
     enum Transform: String, CaseIterable {
-        case errorAdoption, requestAndResponse
+        case errorAdoption, requestAndResponse, memberwiseInitializer
         func transform(options: Options) -> (SourceFileSyntax) -> Syntax {
             switch self {
             case .errorAdoption: return ErrorProtocolAdoptionGenerator().generate
             case .requestAndResponse: return RequestResponseExtensionGenerator().with(templatePaths: [options.templateFilePath]).generate
+            case .memberwiseInitializer: return MemberwiseConvenientInitializerGenerator().generate
             }
         }
         func shortcut() -> String {
             switch self {
             case .errorAdoption: return "e"
             case .requestAndResponse: return "rr"
+            case .memberwiseInitializer: return "mwi"
             }
         }
         func humanDescription() -> String {
             switch self {
             case .errorAdoption: return "Adopt error protocol to .Error types."
             case .requestAndResponse: return "Add Invocation and Service to Scope IF Scope.Request and Scope.Response types exist."
+            case .memberwiseInitializer: return "Add Memberwise initializers in extension."
             }
         }
         static func create(_ shortcutOrName: String) -> Self? {
             return Self.init(rawValue: shortcutOrName) ?? .create(shortcut: shortcutOrName)
         }
         static func create(shortcut: String) -> Self? {
-            switch shortcut {
-            case Self.errorAdoption.shortcut(): return .errorAdoption
-            case Self.requestAndResponse.shortcut(): return .requestAndResponse
-            default: return nil
-            }
+            allCases.first(where: {$0.shortcut() == shortcut})
         }
         static func list() -> [(String, String, String)] {
             allCases.compactMap {($0.rawValue, $0.shortcut() ,$0.humanDescription())}
