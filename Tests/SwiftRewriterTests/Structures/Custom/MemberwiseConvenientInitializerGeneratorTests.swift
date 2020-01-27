@@ -1,5 +1,5 @@
 //
-//  MemberwiseConvenientInitializerTests.swift
+//  MemberwiseConvenientInitializerGeneratorTests.swift
 //  
 //
 //  Created by Dmitry Lobanov on 22.01.2020.
@@ -29,7 +29,7 @@
 import XCTest
 @testable import SwiftRewriter
 
-final class MemberwiseConvenientInitializerTests: XCTestCase
+final class MemberwiseConvenientInitializerGeneratorTests: XCTestCase
 {
     func test_empty() throws
     {
@@ -46,7 +46,7 @@ final class MemberwiseConvenientInitializerTests: XCTestCase
         try runTest(
             source: source,
             expected: expected,
-            using: MemberwiseConvenientInitializer()
+            using: MemberwiseConvenientInitializerGenerator()
         )
     }
 
@@ -92,7 +92,7 @@ final class MemberwiseConvenientInitializerTests: XCTestCase
         try runTest(
             source: source,
             expected: expected,
-            using: MemberwiseConvenientInitializer()
+            using: MemberwiseConvenientInitializerGenerator()
         )
     }
 
@@ -131,7 +131,7 @@ final class MemberwiseConvenientInitializerTests: XCTestCase
         try runTest(
             source: source,
             expected: expected,
-            using: MemberwiseConvenientInitializer()
+            using: MemberwiseConvenientInitializerGenerator()
         )
     }
 }
